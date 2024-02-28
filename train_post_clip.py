@@ -135,10 +135,7 @@ def get_condition_embeddings(args, model, clip_model, dataloader, times=5):
                 query_points = query_points.type(torch.FloatTensor).to(args.device)
                 occ = occ.type(torch.FloatTensor).to(args.device)
 
-                if args.input_type == "Voxel":
-                    data_input = data['voxels'].type(torch.FloatTensor).to(args.device)
-                elif args.input_type == "Pointcloud":
-                    data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
+                data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
             
                 shape_emb = model.encoder(data_input)
                 

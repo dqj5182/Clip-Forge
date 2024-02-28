@@ -22,7 +22,7 @@ def experiment_name(args):
 
     from datetime import datetime
 
-    tokens = ["Autoencoder", args.dataset_name, args.input_type, args.output_type, args.emb_dims, args.last_feature_transform]
+    tokens = ["Autoencoder", "Shapenet" "Pointcloud", args.output_type, args.emb_dims, args.last_feature_transform]
            
     if args.categories != None:
         for i in args.categories:
@@ -79,34 +79,29 @@ def compute_iou(occ1, occ2):
 ############################################# data loader #################################################
 
 def get_dataloader(args, split="train"):
-    
-    if args.dataset_name == "Shapenet":
-        pointcloud_field = shapenet_dataset.PointCloudField("pointcloud.npz")
-        points_field = shapenet_dataset.PointsField("points.npz",unpackbits=True)
-        voxel_fields = shapenet_dataset.VoxelsField("model.binvox")
+    pointcloud_field = shapenet_dataset.PointCloudField("pointcloud.npz")
+    points_field = shapenet_dataset.PointsField("points.npz",unpackbits=True)
+    voxel_fields = shapenet_dataset.VoxelsField("model.binvox")
 
-        fields = {}
+    fields = {}
 
-        fields['pointcloud'] = pointcloud_field
-        fields['points'] = points_field
-        fields['voxels'] = voxel_fields
+    fields['pointcloud'] = pointcloud_field
+    fields['points'] = points_field
+    fields['voxels'] = voxel_fields
 
-        if split == "train":
-            dataset = shapenet_dataset.Shapes3dDataset(args.dataset_path, fields, split=split,
-                     categories=args.categories, no_except=True, transform=None, num_points=args.num_points,           num_sdf_points=args.num_sdf_points, sampling_type=args.sampling_type)
+    if split == "train":
+        dataset = shapenet_dataset.Shapes3dDataset(args.dataset_path, fields, split=split,
+                    categories=args.categories, no_except=True, transform=None, num_points=args.num_points,           num_sdf_points=args.num_sdf_points, sampling_type=args.sampling_type)
 
-            dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True)
-            total_shapes = len(dataset)
-        else:
-            dataset = shapenet_dataset.Shapes3dDataset(args.dataset_path, fields, split=split,
-                     categories=args.categories, no_except=True, transform=None, num_points=args.num_points, num_sdf_points=args.test_num_sdf_points,  sampling_type=args.sampling_type)
-            dataloader = DataLoader(dataset, batch_size=args.test_batch_size, shuffle=True, num_workers=args.num_workers, drop_last=False)
-            total_shapes = len(dataset)
-        return dataloader, total_shapes 
-  
-    
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True)
+        total_shapes = len(dataset)
     else:
-        raise ValueError("Dataset name is not defined {}".format(args.dataset_name))
+        dataset = shapenet_dataset.Shapes3dDataset(args.dataset_path, fields, split=split,
+                    categories=args.categories, no_except=True, transform=None, num_points=args.num_points, num_sdf_points=args.test_num_sdf_points,  sampling_type=args.sampling_type)
+        dataloader = DataLoader(dataset, batch_size=args.test_batch_size, shuffle=True, num_workers=args.num_workers, drop_last=False)
+        total_shapes = len(dataset)
+    return dataloader, total_shapes 
+
 
 ############################################# data loader #################################################
 
@@ -118,11 +113,7 @@ def visualization_model(model, args, test_dataloader, name_info):
     test_loader = iter(test_dataloader)
     data = next(test_loader)
     
-    
-    if args.input_type == "Voxel":
-        data_input = data['voxels'].type(torch.FloatTensor).to(args.device)
-    elif args.input_type == "Pointcloud":
-        data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
+    data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
 
     if args.output_type == "Implicit":
         voxel_32 = data['voxels'].type(torch.FloatTensor).to(args.device)
@@ -191,11 +182,7 @@ def val_one_epoch(model, args, test_dataloader, epoch):
 
     with torch.no_grad():
         for data in test_dataloader:
-            
-            if args.input_type == "Voxel":
-                data_input = data['voxels'].type(torch.FloatTensor).to(args.device)
-            elif args.input_type == "Pointcloud":
-                data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
+            data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
 
             if args.output_type == "Implicit":
                 query_points, occ = data['points'], data['points.occ']
@@ -230,10 +217,7 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
 
         data_index =  data['idx'].to(args.device)
         
-        if args.input_type == "Voxel":
-            data_input = data['voxels'].type(torch.FloatTensor).to(args.device)
-        elif args.input_type == "Pointcloud":
-            data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
+        data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
            
         if args.output_type == "Implicit":
             query_points, occ = data['points'], data['points.occ']
@@ -266,7 +250,6 @@ def parsing(mode="args"):
     parser = argparse.ArgumentParser()
     
     ### Sub Network details
-    parser.add_argument("--input_type", type=str, default='Voxel', help='What is the input representation')
     parser.add_argument("--output_type", type=str, default='Implicit', help='What is the output representation')
     parser.add_argument("--encoder_type", type=str, default='Voxel_Encoder_BN', help='what is the encoder')
     parser.add_argument("--decoder_type", type=str, default='Occ_Simple_Decoder', help='what is the decoder')
@@ -277,7 +260,6 @@ def parsing(mode="args"):
                         
     ### Dataset details
     parser.add_argument('--dataset_path', type=str, default=None, help='Dataset path')
-    parser.add_argument('--dataset_name', type=str, default="Shapenet", help='Dataset path')
     parser.add_argument("--num_points", type=int, default=2025, help='Number of points')
     parser.add_argument("--num_sdf_points", type=int, default=5000, help='Number of points')
     parser.add_argument("--test_num_sdf_points", type=int, default=30000, help='Number of points')

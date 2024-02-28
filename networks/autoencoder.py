@@ -222,32 +222,20 @@ class get_model(nn.Module):
         self.encoder_type = args.encoder_type 
         self.decoder_type = args.decoder_type
         self.emb_dims = args.emb_dims
-        self.input_type = args.input_type
+        self.input_type = "Pointcloud"
         self.output_type = args.output_type
         
         ### Sub-Network def 
-        if self.input_type == "Voxel":
-            self.encoder = VoxelEncoderBN(dim=3, c_dim=args.emb_dims, last_feature_transform="add_noise")
-        elif self.input_type == "Pointcloud":
-            self.encoder = PointNet(pc_dims=1024, c_dim=args.emb_dims, last_feature_transform="add_noise")
-        else:
-            raise ValueError('The input representation is not implemented') 
-         
-        
+        self.encoder = PointNet(pc_dims=1024, c_dim=args.emb_dims, last_feature_transform="add_noise")
         if self.output_type == "Implicit":
             self.decoder = Occ_Simple_Decoder(z_dim=args.emb_dims)
         elif self.output_type == "Pointcloud":
             self.decoder = Foldingnet_decoder(num_points=args.num_points, z_dim=args.emb_dims)
         else:
-            raise ValueError('The output representation is not implemented')
-        
-      
+            raise ValueError('The output representation is not implemented')    
                 
     def decoding(self, shape_embedding, points=None): 
-        if self.output_type == "Pointcloud":
-            return self.decoder(shape_embedding)
-        else:    
-            return self.decoder(points, shape_embedding)
+        return self.decoder(shape_embedding)
             
 
     def reconstruction_loss(self, pred, gt):
@@ -255,7 +243,7 @@ class get_model(nn.Module):
             dl, dr = distChamfer(gt, pred)
             loss = (dl.mean(dim=1) + dr.mean(dim=1)).mean()           
         else:    
-            loss = torch.mean((pred.squeeze(-1) - gt)**2)             
+            loss = torch.mean((pred.squeeze(-1) - gt)**2)                
         return loss 
     
 
