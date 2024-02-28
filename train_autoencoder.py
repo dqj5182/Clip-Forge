@@ -215,7 +215,7 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
         iteration = iteration + 1
         optimizer.zero_grad()
 
-        data_index =  data['idx'].to(args.device)
+        # data_index =  data['idx'].to(args.device)
         
         data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
            

@@ -44,10 +44,10 @@ unzip exps.zip
 For training, first you need to setup the dataset. We use the data prepared from occupancy networks (https://github.com/autonomousvision/occupancy_networks).
 ```
 ## Stage 1
-python train_autoencoder.py --dataset_path /path/to/dataset/ --input_type Pointcloud --output_type Pointcloud 
+python train_autoencoder.py --dataset_path occupancy_net_dataset --input_type Pointcloud --output_type Pointcloud 
  
 ## Stage 2
-python train_post_clip.py  --dataset_path /path/to/dataset/ --input_type Pointcloud --output_type Pointcloud  --checkpoint best  --num_views 1 --text_query "a chair" "a limo" "a jet plane"
+python train_post_clip.py  --dataset_path occupancy_net_dataset --input_type Pointcloud --output_type Pointcloud  --checkpoint best  --num_views 1 --text_query "a chair" "a limo" "a jet plane"
 ```
 
 
