@@ -2,20 +2,10 @@ import os
 import os.path as osp
 import logging
 import argparse
-from tqdm import tqdm
-
-from sklearn.metrics import accuracy_score, confusion_matrix
 import numpy as np
-
-from PIL import Image
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from mpl_toolkits.mplot3d import Axes3D
 
 import torch
 from torch.optim import lr_scheduler
-import torch.nn.functional as F
-import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -304,7 +294,7 @@ def parsing(mode="args"):
     parser.add_argument('--gpu', nargs='+' , default="0", help='GPU list')
     parser.add_argument('--optimizer', type=str, choices=('SGD', 'Adam'), default='Adam')
     parser.add_argument('--lr', type=float, default=None)
-    parser.add_argument('--batch_size', type=int, default=32, help='Dimension of embedding')
+    parser.add_argument('--batch_size', type=int, default=48, help='Dimension of embedding')
     parser.add_argument('--test_batch_size', type=int, default=32, help='Dimension of embedding')
     parser.add_argument('--threshold', type=float, default=0.05, help='Threshold for voxel stuff')
     parser.add_argument('--sampling_type', type=str, default=None, help='what sampling type: None--> Uniform')
