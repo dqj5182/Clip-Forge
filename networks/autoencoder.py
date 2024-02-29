@@ -233,15 +233,6 @@ class get_model(nn.Module):
             self.decoder = Foldingnet_decoder(num_points=args.num_points, z_dim=args.emb_dims)
         else:
             raise ValueError('The output representation is not implemented')    
-        
-        self.linear_encoder_m = nn.Sequential(
-                                    nn.ReLU(),
-                                    nn.Linear(128, 128)
-                                )
-        self.linear_encoder_v = nn.Sequential(
-                                    nn.ReLU(),
-                                    nn.Linear(128, 128)
-                                )
                 
     def decoding(self, shape_embedding, points=None): 
         return self.decoder(shape_embedding)
@@ -255,22 +246,8 @@ class get_model(nn.Module):
             loss = torch.mean((pred.squeeze(-1) - gt)**2)                
         return loss 
     
-    def kl_loss(self, mean, logvar):
-        KLD = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp())
-        return KLD
-    
-    def reparameterize(self, mu, log_var):
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-    
+
     def forward(self, data_input, query_points=None):
-        shape_embs = self.encoder(data_input) # shaep_embs: [b, 128], data_input: [b, 3, 2025]
-        shape_mean, shape_logvar = self.linear_encoder_m(shape_embs), self.linear_encoder_v(shape_embs)
-        shape_latent = self.reparameterize(shape_mean, shape_logvar)
-        pred = self.decoding(shape_latent, points=query_points) # pred: [b, 2025, 3], query_points: None
-        return pred, shape_mean, shape_logvar, shape_latent #pred, shape_embs
-    
-    def inference(self, shape_latent, query_points=None):
-        pred = self.decoding(shape_latent, points=query_points) # pred: [b, 2025, 3], query_points: None
-        return pred
+        shape_embs = self.encoder(data_input)  
+        pred = self.decoding(shape_embs, points=query_points)
+        return pred, shape_embs

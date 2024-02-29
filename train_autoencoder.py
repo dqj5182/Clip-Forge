@@ -127,7 +127,7 @@ def visualization_model(model, args, test_dataloader, name_info):
                 
    
     with torch.no_grad():
-        pred, mean, logvar, shape_embs = model(data_input, query_points)
+        pred, decoder_embs = model(data_input, query_points)
         
         if name_info is not None:
             save_loc = args.vis_dir + "/" + str(name_info) + "_"  
@@ -163,7 +163,7 @@ def val_one_epoch_iou(model, args, test_dataloader, epoch):
             if args.test_batch_size != data_input.size(0):
                 query_points = points_voxels.expand( data_input.size(0), *points_voxels.size())
             
-            pred, mean, logvar, shape_embs = model(data_input, query_points)
+            pred, _ = model(data_input, query_points)
             
             occ_hat_np = (pred >= args.threshold).cpu().numpy()
                 
@@ -193,7 +193,7 @@ def val_one_epoch(model, args, test_dataloader, epoch):
                 query_points = None
                 gt = data['pc_org'].type(torch.FloatTensor).to(args.device) 
             
-            pred, mean, logvar, shape_embs = model(data_input, query_points)
+            pred, _ = model(data_input, query_points)
             loss_reconstuct = model.reconstruction_loss(pred, gt)
 
             loss_reconstruction.append(loss_reconstuct.item())
@@ -228,12 +228,11 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
             query_points = None
             gt = data['pc_org'].type(torch.FloatTensor).to(args.device) 
         
-        pred, mean, logvar, shape_embs = model(data_input, query_points)
+        pred, shape_embs = model(data_input, query_points)
 
         loss_reconstuct = model.reconstruction_loss(pred, gt)
-        loss_divergence = model.kl_loss(mean, logvar)
                    
-        loss = loss_reconstuct + loss_divergence
+        loss = loss_reconstuct 
         loss.backward()
         optimizer.step()
         loss_meter.update(loss, data_input.size(0))
@@ -242,9 +241,8 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
            
         if iteration % args.print_every == 0:
             avg_reconstruction_loss = np.mean(np.asarray(loss_reconstruction))
-            avg_kl_loss = np.mean(np.asarray(loss_divergence.detach().cpu().numpy()))
           
-            logging.info("[Train]  Epoch {}, Iteration {} loss: {}, recon loss: {}, kl loss: {}".format(epoch, iteration, loss_meter.avg, avg_reconstruction_loss, avg_kl_loss))
+            logging.info("[Train]  Epoch {}, Iteration {} loss: {}, recon loss: {}".format(epoch, iteration, loss_meter.avg, avg_reconstruction_loss))
 
 ############################## training #################################################   
 
@@ -256,7 +254,7 @@ def parsing(mode="args"):
     parser.add_argument("--encoder_type", type=str, default='Voxel_Encoder_BN', help='what is the encoder')
     parser.add_argument("--decoder_type", type=str, default='Occ_Simple_Decoder', help='what is the decoder')
     parser.add_argument('--emb_dims', type=int, default=128, help='Dimension of embedding')
-    parser.add_argument('--last_feature_transform', type=str, default="none", help='add_noise or none')
+    parser.add_argument('--last_feature_transform', type=str, default="add_noise", help='add_noise or none')
     parser.add_argument('--reconstruct_loss_type', type=str, default="sum", help='bce or sum (mse) or mean (mse)')
     parser.add_argument('--pc_dims', type=int, default=1024, help='Dimension of embedding')
                         
