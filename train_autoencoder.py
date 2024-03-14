@@ -6,11 +6,12 @@ import numpy as np
 
 import torch
 from torch.optim import lr_scheduler
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 
 from utils import helper
 from utils import visualization
+from utils.train_utils import frange_cycle_cosine
 
 from networks import autoencoder
 
@@ -207,15 +208,14 @@ def val_one_epoch(model, args, test_dataloader, epoch):
 
 ############################## training #################################################
 
-def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_meter, epoch):
+def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_meter, epoch, kl_weight_scheduler):
     model.train()
     loss_reconstruction = []    
     iteration = 0
+    kl_weight = kl_weight_scheduler[epoch]
     for data in train_dataloader:
         iteration = iteration + 1
         optimizer.zero_grad()
-
-        # data_index =  data['idx'].to(args.device)
         
         data_input = data['pc_org'].type(torch.FloatTensor).to(args.device).transpose(-1, 1)
            
@@ -231,7 +231,8 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
         pred, mean, logvar, shape_embs = model(data_input, query_points)
 
         loss_reconstuct = model.reconstruction_loss(pred, gt)
-        loss_divergence = model.kl_loss(mean, logvar)
+        # loss_divergence = 1.0e-6 * model.kl_loss(mean, logvar)
+        loss_divergence = kl_weight * model.kl_loss(mean, logvar)
                    
         loss = loss_reconstuct + loss_divergence
         loss.backward()
@@ -286,7 +287,7 @@ def parsing(mode="args"):
     ### Logging details 
     parser.add_argument('--print_every', type=int, default=50, help='Printing the loss every')
     parser.add_argument('--save_every', type=int, default=50, help='Saving the model every')
-    parser.add_argument('--validation_every', type=int, default=5000, help='validation set every')
+    parser.add_argument('--validation_every', type=int, default=100, help='validation set every')
     parser.add_argument('--visualization_every', type=int, default=10, help='visualization of the results every')
     parser.add_argument("--log-level", type=str, choices=('info', 'warn', 'error'), default='info')
     parser.add_argument('--experiment_type', type=str, default="max", help='experiment type')
@@ -368,6 +369,8 @@ def main():
     else:
         optimizer = helper.get_optimizer_model(args.optimizer, net, lr=args.lr)
         scheduler = lr_scheduler.CosineAnnealingLR(optimizer, args.num_iterations, 0.000001)
+        kl_weight_scheduler = frange_cycle_cosine(0.0, 1.0, args.epochs, 4) # weight scheduling
+
 
         start_epoch = 0 
         if args.checkpoint != None:
@@ -388,7 +391,7 @@ def main():
             loss_meter = helper.AverageMeter()
             logging.info("#############################")
             #val_iou = val_one_epoch_iou(net, args, test_dataloader, epoch)
-            train_one_epoch(net, args, train_dataloader, optimizer, scheduler, loss_meter, epoch)
+            train_one_epoch(net, args, train_dataloader, optimizer, scheduler, loss_meter, epoch, kl_weight_scheduler)
     
             if (epoch + 1) % 5 == True:
                 visualization_model(net, args, test_dataloader, epoch)
