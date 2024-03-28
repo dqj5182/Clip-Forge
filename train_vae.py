@@ -231,7 +231,7 @@ def train_one_epoch(model, args, train_dataloader, optimizer, scheduler, loss_me
         pred, mean, logvar, shape_embs = model(data_input, query_points)
 
         loss_reconstuct = model.reconstruction_loss(pred, gt)
-        loss_divergence = model.kl_loss(mean, logvar)
+        loss_divergence = 1.0e-6 * model.kl_loss(mean, logvar)
                    
         loss = loss_reconstuct + loss_divergence
         loss.backward()
@@ -271,7 +271,7 @@ def parsing(mode="args"):
     ### training details
     parser.add_argument('--train_mode', type=str, default="train", help='train or test')
     parser.add_argument('--seed', type=int, default=1, help='Seed')
-    parser.add_argument('--epochs', type=int, default=300, help="Total epochs")
+    parser.add_argument('--epochs', type=int, default=8000, help="Total epochs")
     parser.add_argument('--checkpoint', type=str, default=None, help="Checkpoint to load")
     parser.add_argument('--use_timestamp',  action='store_true', help='Whether to use timestamp in dump files')
     parser.add_argument('--num_iterations', type=int, default=300000, help='How long the training shoulf go on')    
@@ -408,9 +408,13 @@ def main():
                     logging.info("Saving Model........{}".format(filename))
                     helper.save_checkpoint(osp.join(args.checkpoint_dir, filename), net, args, optimizer, scheduler, epoch)
 
-            filename = '{}.pt'.format("last")
+            filename = f'epoch{epoch}.pt'
             logging.info("Saving Model........{}".format(filename))
             helper.save_checkpoint(osp.join(args.checkpoint_dir, filename), net, args, optimizer, scheduler, epoch)
+
+        filename = '{}.pt'.format("last")
+        logging.info("Saving Model........{}".format(filename))
+        helper.save_checkpoint(osp.join(args.checkpoint_dir, filename), net, args, optimizer, scheduler, epoch)
 
 
 if __name__ == "__main__":
