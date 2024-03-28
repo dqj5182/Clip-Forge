@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import distributions as dist
 
 import numpy as np
-from .network_utils import ResnetBlockFC
+from .network_utils import ResnetBlockFC, CResnetBlockConv1d, CBatchNorm1d, CBatchNorm1d_legacy, ResnetBlockConv1d
 
 EPS = 1e-6
 
@@ -65,8 +66,8 @@ class PointNet(nn.Module):
         x = self.point_head(x)
         x = self.projection_layer(x)
         
-        # if self.last_feature_transform == "add_noise" and self.training is True:
-        #     x = x + 0.1*torch.randn(*x.size()).to(x.device)   
+        if self.last_feature_transform == "add_noise" and self.training is True:
+            x = x + 0.1*torch.randn(*x.size()).to(x.device)   
  
         return x 
 
@@ -155,8 +156,8 @@ class VoxelEncoderBN(nn.Module):
         hidden = net.view(batch_size, 512 * 2 * 2 * 2)
         x = self.fc(self.actvn(hidden))
         
-        # if self.last_feature_transform == "add_noise" and self.training is True:
-        #     x = x + 0.1*torch.randn(*x.size()).to(x.device)  
+        if self.last_feature_transform == "add_noise" and self.training is True:
+            x = x + 0.1*torch.randn(*x.size()).to(x.device)  
 
         return x
         
@@ -225,7 +226,7 @@ class get_model(nn.Module):
         self.output_type = args.output_type
         
         ### Sub-Network def 
-        self.encoder = PointNet(pc_dims=1024, c_dim=args.emb_dims, last_feature_transform=None)
+        self.encoder = PointNet(pc_dims=1024, c_dim=args.emb_dims, last_feature_transform="add_noise")
         if self.output_type == "Implicit":
             self.decoder = Occ_Simple_Decoder(z_dim=args.emb_dims)
         elif self.output_type == "Pointcloud":
